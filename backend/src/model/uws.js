@@ -7,10 +7,12 @@ const UWS = (function () {
 
     this.init = (_model) => {
       model = _model;
+      this.listen();
     };
 
-    this.listen = (host, port) => model.listen(host, port);
-
+    this.getApp = () => model.getApp();
+    this.getVars = () => model.getVars();
+    this.listen = () => model.listen();
     this.DEDICATED_COMPRESSOR_3KB = uWs.DEDICATED_COMPRESSOR_3KB;
   }
 
@@ -21,7 +23,9 @@ const UWS = (function () {
       app = _app;
     };
 
-    this.listen = (host, port) => app.listen(host, port);
+    this.getApp = () => app.getApp();
+    this.getVars = () => app.getVars();
+    this.listen = () => app.listen();
   }
 
   function App() {
@@ -35,18 +39,31 @@ const UWS = (function () {
     let port = null;
 
     this.init = (_initiOption) => {
-      const { __socketOption, __ssl, __listenUrl, __query, __methods } =
-        _initiOption;
+      const {
+        __socketOption,
+        __ssl,
+        __listenUrl,
+        __query,
+        __methods,
+        __host,
+        __port,
+      } = _initiOption;
       const { upgrade, open, message, drain, close } = __methods;
       socketOption = __socketOption;
       ssl = __ssl;
-      listenUrl = __listenUrl;
+      host = __host;
+      port = __port;
       query = __query;
       methods = __methods;
+      listenUrl = (param) => `ws://${host}:${port}` + "/" + param;
 
-      app = uWs.App(ssl).ws(listenUrl + query, {
+      app = uWs.App(ssl).ws(listenUrl(query), {
         ...socketOption,
-        upgrade: upgrade || (() => {}),
+        upgrade:
+          upgrade ||
+          ((res, req) => {
+            query = req.getQuery() || query;
+          }),
         open:
           open ||
           ((ws) => {
@@ -59,6 +76,7 @@ const UWS = (function () {
           ((ws, message, isBinary) => {
             /* Ok is false if backpressure was built up, wait for drain */
             let ok = ws.send(message, isBinary);
+            console.log(message);
           }),
         drain:
           drain ||
@@ -73,18 +91,28 @@ const UWS = (function () {
       });
     };
 
-    this.listen = (host, port) => {
+    this.listen = () => {
       app.listen(port, (token) => {
-        console.log(`WebSocket Listening on ws://${host}:${port}`);
+        console.log(`WebSocket Listening on ${listenUrl(query)}`);
         if (token) {
         }
       });
-      return this;
     };
 
     this.getApp = () => {
       return app;
     };
+
+    this.getVars = () => ({
+      app,
+      socketOption,
+      ssl,
+      listenUrl,
+      query,
+      methods,
+      host,
+      port,
+    });
   }
 
   return {
@@ -97,12 +125,29 @@ const UWS = (function () {
       model.init(app);
       controller.init(model);
 
-      return controller;
+      return { ...controller.getVars(), getApp: controller.getApp };
     },
   };
 })();
 
 export default UWS;
+
+const APP = UWS.initialize({
+  __socketOption: {
+    idleTimeout: 32,
+    maxBackpressure: 1024,
+    maxPayloadLength: 512,
+    compression: UWS.DEDICATED_COMPRESSOR_3KB,
+  },
+  __ssl: {},
+  __listenUrl: (host, port) => `ws://${host}:${port}`,
+  __query: "?sp=A",
+  __methods: {},
+  __host: "localhost",
+  __port: String(3000),
+});
+
+export { APP as uWs };
 
 // 소켓 옵션
 /* There are many common helper features */

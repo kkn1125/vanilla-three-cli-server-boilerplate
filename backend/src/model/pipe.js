@@ -6,8 +6,8 @@ const PIPE = (function () {
     };
 
     this.add = (name, func) => model.add(name, func);
-    this.consumer = (name) => model.consumer(name);
-    this.promiseAllConsumer = (name) => model.promiseAllConsumer(name);
+    this.consume = (name) => model.consume(name);
+    this.promiseAllConsume = (name) => model.promiseAllConsume(name);
     this.get = (name) => model.get(name);
     this.size = (name) => model.size(name);
     this.clear = (name) => model.clear(name);
@@ -22,8 +22,8 @@ const PIPE = (function () {
     };
 
     this.add = (name, func) => pipe.add(name, func);
-    this.consumer = (name) => pipe.consumer(name);
-    this.promiseAllConsumer = (name) => pipe.promiseAllConsumer(name);
+    this.consume = (name) => pipe.consume(name);
+    this.promiseAllConsume = (name) => pipe.promiseAllConsume(name);
     this.get = (name) => pipe.get(name);
     this.size = (name) => pipe.size(name);
     this.clear = (name) => pipe.clear(name);
@@ -50,7 +50,7 @@ const PIPE = (function () {
       this.get(name).push(func.bind(func));
     };
 
-    this.consumer = (name) => {
+    this.consume = (name) => {
       const first = this.get(name).shift();
 
       if (Boolean(first)) {
@@ -60,7 +60,7 @@ const PIPE = (function () {
       return first && this;
     };
 
-    this.promiseAllConsumer = (name) => {
+    this.promiseAllConsume = (name) => {
       const consumeList = pipe.get(name).map((func) => Promise.resolve(func()));
       this.clear(name);
       return Promise.all(consumeList);
@@ -125,7 +125,7 @@ pipeController.add("test", () => {
   console.log("wow");
 });
 
-pipeController.promiseAllConsumer("test").then((result) => {
+pipeController.promiseAllConsume("test").then((result) => {
   console.log(result);
 });
 
