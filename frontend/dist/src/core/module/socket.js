@@ -1,7 +1,9 @@
 import dev from "../../model/devConsole";
+import { options } from "../options";
 
 class Socket {
-  #ws;
+  #sockets = new Map();
+	#users = [];
 
   constructor() {
     this.#initialize();
