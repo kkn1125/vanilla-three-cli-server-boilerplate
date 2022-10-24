@@ -39,30 +39,21 @@ const UWS = (function () {
     let port = null;
 
     this.init = (_initiOption) => {
-      const {
-        __socketOption,
-        __ssl,
-        __listenUrl,
-        __query,
-        __methods,
-        __host,
-        __port,
-      } = _initiOption;
+      const { __socketOption, __ssl, __methods, __host, __port } = _initiOption;
       const { upgrade, open, message, drain, close } = __methods;
       socketOption = __socketOption;
       ssl = __ssl;
       host = __host;
       port = __port;
-      query = __query;
       methods = __methods;
-      listenUrl = (param) => `ws://${host}:${port}` + "/" + param;
+      listenUrl = `ws://${host}:${port}/`;
 
-      app = uWs.App(ssl).ws(listenUrl(query), {
+      app = uWs.App(ssl).ws(listenUrl, {
         ...socketOption,
         upgrade:
           upgrade ||
           ((res, req) => {
-            query = req.getQuery() || query;
+            query = req.getQuery() || "";
           }),
         open:
           open ||
@@ -93,10 +84,11 @@ const UWS = (function () {
 
     this.listen = () => {
       app.listen(port, (token) => {
-        console.log(`WebSocket Listening on ${listenUrl(query)}`);
+        console.log(`WebSocket Listening on ${listenUrl}`);
         if (token) {
         }
       });
+      return this;
     };
 
     this.getApp = () => {
@@ -125,7 +117,7 @@ const UWS = (function () {
       model.init(app);
       controller.init(model);
 
-      return { ...controller.getVars(), getApp: controller.getApp };
+      return controller;
     },
   };
 })();
@@ -140,8 +132,6 @@ const APP = UWS.initialize({
     compression: UWS.DEDICATED_COMPRESSOR_3KB,
   },
   __ssl: {},
-  __listenUrl: (host, port) => `ws://${host}:${port}`,
-  __query: "?sp=A",
   __methods: {},
   __host: "localhost",
   __port: String(3000),

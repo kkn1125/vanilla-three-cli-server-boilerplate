@@ -16,11 +16,11 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
     },
     server: {
       host: "localhost",
-      port: 3000,
+      port: 4000,
       hmr: {
         protocol: "ws",
         host: "localhost",
-				port: 3000,
+        port: 3000,
       },
       watch: {
         ignored: ["/node_modules/**"],

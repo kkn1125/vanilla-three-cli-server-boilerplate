@@ -2,13 +2,14 @@
   "name": "backend",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "scripts": {
     "start": "pm2 start ecosystem.config.js --env development --update-env",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "set NDOE_ENV=development && nodemon app.js"
   },
   "dependencies": {
     "pm2": "^5.2.2",

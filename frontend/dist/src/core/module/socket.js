@@ -1,17 +1,22 @@
 import dev from "../../model/devConsole";
-import { options } from "../options";
+import options from "../options";
 
 class Socket {
   #sockets = new Map();
-	#users = [];
+  #users = [];
+  #ws = null;
+  #requestWebSocketUri = null;
 
   constructor() {
     this.#initialize();
   }
 
   #initialize() {
-    this.#ws = new WebSocket("ws://localhost:5000/?sp=A");
     dev.log("ws initialized");
+    this.#requestWebSocketUri = `ws://${options.socket.host}:${options.socket.port}/${options.socket.query}`;
+    this.#ws = new WebSocket(this.#requestWebSocketUri);
+    this.#ws.binaryType = "arraybuffer";
+    dev.log(`connecting on ${this.#requestWebSocketUri}`);
   }
 
   #options() {
@@ -32,6 +37,22 @@ class Socket {
   }
   #close(e) {
     dev.log(e);
+  }
+
+  send(message) {
+    this.#ws.send(message);
+  }
+
+  sendStringify(message) {
+    this.#ws.send(JSON.stringify(message));
+  }
+
+  sendBinaryData(binaries) {
+    this.#ws.send(
+      protobuf.Message.encode(
+        new protobuf.Message(JSON.stringify(binaries))
+      ).finish()
+    );
   }
 }
 
