@@ -12,7 +12,6 @@ class Socket {
   }
 
   #initialize() {
-    dev.log("ws initialized");
     this.#requestWebSocketUri = `ws://${options.socket.host}:${options.socket.port}/${options.socket.query}`;
     this.#ws = new WebSocket(this.#requestWebSocketUri);
     this.#ws.binaryType = "arraybuffer";
@@ -56,4 +55,4 @@ class Socket {
   }
 }
 
-export default new Socket();
+export default Socket

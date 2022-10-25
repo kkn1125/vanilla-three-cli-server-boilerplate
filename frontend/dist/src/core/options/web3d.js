@@ -1,6 +1,6 @@
 const options = {
   camera: {
-    FOV: 75,
+    FOV: 45,
     INNER_WIDTH: innerWidth,
     INNER_HEIGHT: innerHeight,
     NEAR: 0.1,

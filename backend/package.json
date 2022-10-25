@@ -2,13 +2,14 @@
   "name": "backend",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "scripts": {
-    "start": "pm2 start ecosystem.config.js --env development --update-env",
+    "start": "pm2 save --force && pm2 start ecosystem.config.js --env development --update-env",
+    "log": "pm2 log",
+    "killall": "pm2 delete all",
     "dev": "set NDOE_ENV=development && nodemon app.js"
   },
   "dependencies": {

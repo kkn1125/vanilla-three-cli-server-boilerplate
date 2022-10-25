@@ -5,8 +5,19 @@ module.exports = {
       watch: ".",
       node_args: "-r esm",
       instances: 1,
-      env: {},
-      env_development: {},
+      increment_var: "PORT",
+      wait_ready: true,
+      env: {
+        NODE_ENV: "development",
+        HOST: "localhost",
+        PORT: 3000,
+      },
+      env_development: {
+        NODE_ENV: "development",
+      },
+      env_production: {
+        NODE_ENV: "production",
+      },
     },
   ],
 

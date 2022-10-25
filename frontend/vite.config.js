@@ -19,7 +19,7 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
       port: 4000,
       hmr: {
         protocol: "ws",
-        host: "localhost",
+        host: "127.0.0.1", // ip address로 해야 함. localhost 안 됨.
         port: 3000,
       },
       watch: {
