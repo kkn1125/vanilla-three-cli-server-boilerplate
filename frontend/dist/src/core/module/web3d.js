@@ -33,8 +33,10 @@ class Web3D {
   run = 0;
 
   /* solar system object settings */
-  clock;
-  mixer;
+  #clock;
+  #mixer;
+  #animationsMap;
+  #currentAnimationAction;
   baseActions = {
     idle: { weight: 1 },
     walk: { weight: 0 },
@@ -52,7 +54,7 @@ class Web3D {
   /* constructor settings */
   constructor() {
     dev.log("init");
-    this.clock = new THREE.Clock();
+    this.#clock = new THREE.Clock();
 
     // setup listener
     this.#addListeners();
@@ -84,23 +86,46 @@ class Web3D {
   }
 
   #startMove(e) {
-    if (e.key.match(/w|a|s|d/)) {
-      console.log(this.joystick);
-      this.joystick[e.key] = true;
-    } else if (e.shiftKey) {
-      this.isRun = true;
+    if (e.key.match(/w|a|s|d|shift/i)) {
+      this.joystick[e.key.toLowerCase()] = true;
     } else {
       return;
     }
+    this.#updateAnimation();
   }
 
   #endMove(e) {
-    if (e.key.match(/w|a|s|d/)) {
-      this.joystick[e.key] = false;
-    } else if (e.shiftKey) {
-      this.isRun = false;
+    if (e.key.match(/w|a|s|d|shift/i)) {
+      this.joystick[e.key.toLowerCase()] = false;
     } else {
       return;
+    }
+    this.#updateAnimation();
+  }
+
+  #updateAnimation() {
+    const previousAnimationAction = this.#currentAnimationAction;
+
+    if (
+      this.joystick["w"] ||
+      this.joystick["a"] ||
+      this.joystick["s"] ||
+      this.joystick["s"] ||
+      this.joystick["d"]
+    ) {
+      console.log(this.joystick)
+      if (this.joystick["shift"]) {
+        this.#currentAnimationAction = this.#animationsMap["run"];
+      } else {
+        this.#currentAnimationAction = this.#animationsMap["walk"];
+      }
+    } else {
+      this.#currentAnimationAction = this.#animationsMap["idle"];
+    }
+
+    if (previousAnimationAction !== this.#currentAnimationAction) {
+      previousAnimationAction.fadeOut(0.5);
+      this.#currentAnimationAction.reset().fadeIn(0.5).play();
     }
   }
 
@@ -297,6 +322,7 @@ class Web3D {
       const model = gltf.scene;
       this.#model = model;
       this.#scene.add(model);
+
       model.traverse((object) => {
         if (object.isMesh) {
           object.castShadow = true;
@@ -306,57 +332,31 @@ class Web3D {
       const skeleton = new THREE.SkeletonHelper(model);
       skeleton.visible = false;
       this.#skeleton = skeleton;
-
       this.#scene.add(skeleton);
 
-      const animations = gltf.animations;
-      this.mixer = new THREE.AnimationMixer(model);
+      const animationClips = gltf.animations;
+      const mixer = new THREE.AnimationMixer(model);
 
-      this.numAnimations = animations.length;
-
-      for (let i = 0; i < this.numAnimations; i++) {
-        let clip = animations[i];
+      const animationsMap = {};
+      animationClips.forEach((clip) => {
         const name = clip.name;
-        if (this.baseActions[name]) {
-          const action = this.mixer.clipAction(clip);
-          this.activateAction(action);
-          this.baseActions[name].action = action;
-          this.allActions.push(action);
-        } else if (this.additiveActions[name]) {
-          THREE.AnimationUtils.makeClipAdditive(clip);
+        animationsMap[name] = mixer.clipAction(clip);
+      });
 
-          if (clip.name.endsWith("_pose")) {
-            clip = THREE.AnimationUtils.subclip(clip, clip.name, 2, 3, 30);
-          }
+      this.#mixer = mixer;
+      this.#animationsMap = animationsMap;
+      this.#currentAnimationAction = this.#animationsMap["idle"];
+      this.#currentAnimationAction.play();
 
-          const action = this.mixer.clipAction(clip);
-          this.activateAction(action);
-          this.additiveActions[name].action = action;
-          this.allActions.push(action);
-        }
-      }
+      // console.log(this.baseActions);
+      // console.log(this.allActions);
     });
-  }
-
-  activateAction(action) {
-    const clip = action.getClip();
-    const settings =
-      this.baseActions[clip.name] || this.additiveActions[clip.name];
-    this.setWeight(action, settings.weight);
-    action.play();
-  }
-
-  setWeight(action, weight) {
-    action.enabled = true;
-    action.setEffectiveTimeScale(1);
-    action.setEffectiveWeight(weight);
   }
 
   #render(frame) {
     this.#renderer.render(this.#scene, this.#camera);
 
     this.#update(frame);
-    this.#characterMove(frame);
 
     requestAnimationFrame(this.#render.bind(this));
   }
@@ -364,77 +364,11 @@ class Web3D {
   #update(frame) {
     frame *= 0.001;
 
-    // for (let i = 0; i < this.numAnimations; ++i) {
-    // if (this.allActions[1]) {
-    //   const action = this.allActions[3];
-    //   const clip = action.getClip();
-    //   // const settings =
-    //   // this.baseActions[clip.name] || this.additiveActions[clip.name];
-    //   // console.log(settings);
-    //   this.allActions[0].setEffectiveWeight(0);
-    //   action.setEffectiveWeight(5);
-    //   this.baseActions["run"].weight = action.getEffectiveWeight();
-    // }
-    // }
-    // if (this.allActions.length > 0) {
-    //   const action = this.allActions[6];
-    //   // const clip = action.getClip();
-    //   this.allActions[0].setEffectiveWeight(0);
-    //   action.setEffectiveWeight(5);
-    //   this.baseActions["run"].weight = action.getEffectiveWeight();
-    // }
-    const mixerUpdateDelta = this.clock.getDelta();
-    this.mixer?.update(mixerUpdateDelta);
+    const mixerUpdateDelta = this.#clock.getDelta();
+    this.#mixer?.update(mixerUpdateDelta);
 
     this.#system.rotation.y = frame / 2;
     this.#earthOrbit.rotation.y = frame;
-    // this.#moonOrbit.rotation.y = frame;
-
-    // this.#box.rotation.x = frame;
-    // this.#box.rotation.y = frame;
-  }
-
-  #characterMove(frame) {
-    if (this.joystick.w) {
-      this.#animationCharacter(6);
-    } else if (this.joystick.s) {
-      this.#animationCharacter(6);
-    } else if (this.joystick.a) {
-      this.#animationCharacter(6);
-    } else if (this.joystick.d) {
-      this.#animationCharacter(6);
-    } else {
-      this.#animationCharacter(2);
-    }
-  }
-
-  #animationCharacter(num) {
-    const action = this.allActions[num];
-    if (!action) return;
-
-    if (num === 2) {
-      if (this.grow > 0) this.grow -= 0.04;
-      if (this.run > 0) this.run -= 0.04;
-      this.allActions[2].setEffectiveWeight(1 - this.grow);
-      this.allActions[2].setEffectiveWeight(1 - this.grow);
-    } else {
-      if (this.grow < this.characterSpeed && !this.isRun) {
-        this.run -= 0.02;
-        this.allActions[3].setEffectiveWeight(1 - this.run);
-        this.grow += 0.02;
-      } else if (this.grow < this.characterSpeed && this.isRun) {
-        this.grow -= 0.02;
-        this.allActions[6].setEffectiveWeight(1 - this.grow);
-        this.run += 0.02;
-      }
-
-      this.allActions[6].setEffectiveWeight(this.grow);
-    }
-
-    // action.setEffectiveWeight(this.grow);
-    // this.allActions[0].setEffectiveWeight(0);
-    // action.setEffectiveWeight(3);
-    // this.baseActions["run"].weight = action.getEffectiveWeight();
   }
 }
 
