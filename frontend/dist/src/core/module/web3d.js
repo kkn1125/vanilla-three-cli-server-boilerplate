@@ -5,6 +5,7 @@ import options from "../options";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 
 class Web3D {
+  /* private fields settings */
   #canvas;
   #renderer;
   #scene;
@@ -15,6 +16,23 @@ class Web3D {
   #model;
   #skeleton;
   #lights = {};
+  #system;
+  #earthOrbit;
+  #moonOrbit;
+
+  joystick = {
+    w: false,
+    a: false,
+    s: false,
+    d: false,
+  };
+
+  characterSpeed = 1;
+  grow = 0;
+  isRun = false;
+  run = 0;
+
+  /* solar system object settings */
   clock;
   mixer;
   baseActions = {
@@ -31,9 +49,13 @@ class Web3D {
   allActions = [];
   numAnimations;
 
+  /* constructor settings */
   constructor() {
     dev.log("init");
     this.clock = new THREE.Clock();
+
+    // setup listener
+    this.#addListeners();
 
     this.#setupRenderer();
     this.#setupScene();
@@ -51,7 +73,35 @@ class Web3D {
     // Model loader
     this.#loadModels();
 
+    this.#createObject3D();
+
     requestAnimationFrame(this.#render.bind(this));
+  }
+
+  #addListeners() {
+    window.addEventListener("keydown", this.#startMove.bind(this));
+    window.addEventListener("keyup", this.#endMove.bind(this));
+  }
+
+  #startMove(e) {
+    if (e.key.match(/w|a|s|d/)) {
+      console.log(this.joystick);
+      this.joystick[e.key] = true;
+    } else if (e.shiftKey) {
+      this.isRun = true;
+    } else {
+      return;
+    }
+  }
+
+  #endMove(e) {
+    if (e.key.match(/w|a|s|d/)) {
+      this.joystick[e.key] = false;
+    } else if (e.shiftKey) {
+      this.isRun = false;
+    } else {
+      return;
+    }
   }
 
   #setupRenderer() {
@@ -185,6 +235,62 @@ class Web3D {
     this.#plane = plane;
   }
 
+  #createObject3D() {
+    const system = new THREE.Object3D();
+    this.#scene.add(system);
+
+    const radius = 1;
+    const widhtSegments = 48;
+    const heightSegments = 48;
+    const sphereGeometry = new THREE.SphereGeometry(
+      radius,
+      widhtSegments,
+      heightSegments
+    );
+    const material = new THREE.MeshPhongMaterial({
+      emissive: 0xffff00,
+      flatShading: true,
+    });
+
+    const mesh = new THREE.Mesh(sphereGeometry, material);
+    mesh.scale.set(1, 1, 1);
+    system.position.set(-3, 0, -3);
+
+    system.add(mesh);
+
+    // earth
+    const earthOrbit = new THREE.Object3D();
+    system.add(earthOrbit);
+
+    const earthMaterial = new THREE.MeshPhongMaterial({
+      color: 0x2233ff,
+      emissive: 0x112244,
+      flatShading: true,
+    });
+
+    const earthMesh = new THREE.Mesh(sphereGeometry, earthMaterial);
+    earthOrbit.position.x = 7;
+    earthOrbit.add(earthMesh);
+
+    const moonOrbit = new THREE.Object3D();
+    moonOrbit.position.x = 3;
+    earthOrbit.add(moonOrbit);
+
+    const moonMaterial = new THREE.MeshPhongMaterial({
+      color: 0x888888,
+      emissive: 0x222222,
+      flatShading: true,
+    });
+
+    const moonMesh = new THREE.Mesh(sphereGeometry, moonMaterial);
+    moonMesh.scale.set(0.5, 0.5, 0.5);
+    moonOrbit.add(moonMesh);
+
+    this.#system = system;
+    this.#earthOrbit = earthOrbit;
+    this.#moonOrbit = moonOrbit;
+  }
+
   #loadModels() {
     const loader = new GLTFLoader();
     loader.load("dist/src/gltf/Xbot.glb", (gltf) => {
@@ -250,6 +356,7 @@ class Web3D {
     this.#renderer.render(this.#scene, this.#camera);
 
     this.#update(frame);
+    this.#characterMove(frame);
 
     requestAnimationFrame(this.#render.bind(this));
   }
@@ -258,22 +365,76 @@ class Web3D {
     frame *= 0.001;
 
     // for (let i = 0; i < this.numAnimations; ++i) {
-    if (this.allActions[1]) {
-      const action = this.allActions[3];
-      const clip = action.getClip();
-      // const settings =
-      // this.baseActions[clip.name] || this.additiveActions[clip.name];
-      // console.log(settings);
-      this.allActions[0].setEffectiveWeight(0);
-      action.setEffectiveWeight(5);
-      this.baseActions["run"].weight = action.getEffectiveWeight();
-    }
+    // if (this.allActions[1]) {
+    //   const action = this.allActions[3];
+    //   const clip = action.getClip();
+    //   // const settings =
+    //   // this.baseActions[clip.name] || this.additiveActions[clip.name];
+    //   // console.log(settings);
+    //   this.allActions[0].setEffectiveWeight(0);
+    //   action.setEffectiveWeight(5);
+    //   this.baseActions["run"].weight = action.getEffectiveWeight();
+    // }
+    // }
+    // if (this.allActions.length > 0) {
+    //   const action = this.allActions[6];
+    //   // const clip = action.getClip();
+    //   this.allActions[0].setEffectiveWeight(0);
+    //   action.setEffectiveWeight(5);
+    //   this.baseActions["run"].weight = action.getEffectiveWeight();
     // }
     const mixerUpdateDelta = this.clock.getDelta();
     this.mixer?.update(mixerUpdateDelta);
 
+    this.#system.rotation.y = frame / 2;
+    this.#earthOrbit.rotation.y = frame;
+    // this.#moonOrbit.rotation.y = frame;
+
     // this.#box.rotation.x = frame;
     // this.#box.rotation.y = frame;
+  }
+
+  #characterMove(frame) {
+    if (this.joystick.w) {
+      this.#animationCharacter(6);
+    } else if (this.joystick.s) {
+      this.#animationCharacter(6);
+    } else if (this.joystick.a) {
+      this.#animationCharacter(6);
+    } else if (this.joystick.d) {
+      this.#animationCharacter(6);
+    } else {
+      this.#animationCharacter(2);
+    }
+  }
+
+  #animationCharacter(num) {
+    const action = this.allActions[num];
+    if (!action) return;
+
+    if (num === 2) {
+      if (this.grow > 0) this.grow -= 0.04;
+      if (this.run > 0) this.run -= 0.04;
+      this.allActions[2].setEffectiveWeight(1 - this.grow);
+      this.allActions[2].setEffectiveWeight(1 - this.grow);
+    } else {
+      if (this.grow < this.characterSpeed && !this.isRun) {
+        this.run -= 0.02;
+        this.allActions[3].setEffectiveWeight(1 - this.run);
+        this.grow += 0.02;
+      } else if (this.grow < this.characterSpeed && this.isRun) {
+        this.grow -= 0.02;
+        this.allActions[6].setEffectiveWeight(1 - this.grow);
+        this.run += 0.02;
+      }
+
+      this.allActions[6].setEffectiveWeight(this.grow);
+    }
+
+    // action.setEffectiveWeight(this.grow);
+    // this.allActions[0].setEffectiveWeight(0);
+    // action.setEffectiveWeight(3);
+    // this.baseActions["run"].weight = action.getEffectiveWeight();
   }
 }
 
